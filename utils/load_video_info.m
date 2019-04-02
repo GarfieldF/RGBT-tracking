@@ -10,8 +10,8 @@ img_path = [video_path '/img/'];
 
 if exist([img_path num2str(1, '%04i.png')], 'file'),
     img_files = num2str((1:seq.len)', [img_path '%04i.png']);
-elseif exist([img_path num2str(1, '%04i.jpg')], 'file'),
-    img_files = num2str((1:seq.len)', [img_path '%04i.jpg']);
+elseif exist([img_path num2str(30, '%05i') 'v.jpg'], 'file'),
+    img_files = num2str((30:seq.len+29)', [img_path '%05i' 'v.jpg']);
 elseif exist([img_path num2str(1, '%04i.bmp')], 'file'),
     img_files = num2str((1:seq.len)', [img_path '%04i.bmp']);
 else

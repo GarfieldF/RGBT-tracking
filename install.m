@@ -4,18 +4,18 @@
 
 warning('ON', 'STRCF:install')
 
-% mtimesx
-if exist('external_libs/mtimesx', 'dir') == 7
-    cd external_libs/mtimesx
-    mtimesx_build;
-    cd(home_dir)
-else
-    error('STRCF:install', 'Mtimesx not found.')
-end
+% % mtimesx
+% if exist('external_libs/mtimesx', 'dir') == 7
+%     cd external_libs/mtimesx
+%     mtimesx_build;
+%     cd(home_dir)
+% else
+%     error('STRCF:install', 'Mtimesx not found.')
+% end
 
 % PDollar toolbox
-if exist('external_libs/pdollar_toolbox/external', 'dir') == 7
-    cd external_libs/pdollar_toolbox/external
+if exist('external_libs/toolbox/external', 'dir') == 7
+    cd external_libs/toolbox/external
     toolboxCompile;
     cd(home_dir)
 else

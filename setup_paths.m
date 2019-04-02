@@ -18,7 +18,7 @@ addpath([pathstr '/external_libs/matconvnet/matlab']);
 addpath([pathstr '/external_libs/matconvnet/matlab/simplenn']);
 
 % PDollar toolbox
-addpath(genpath([pathstr '/external_libs/pdollar_toolbox/channels']));
+addpath(genpath([pathstr '/external_libs/toolbox/channels']));
 
 % Mtimesx
 addpath([pathstr '/external_libs/mtimesx/']);
