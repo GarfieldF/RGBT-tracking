@@ -25,3 +25,6 @@ addpath([pathstr '/external_libs/mtimesx/']);
 
 % mexResize
 addpath([pathstr '/external_libs/mexResize/']);
+
+%SLEP
+addpath(genpath([ cd '/external_libs/SLEP_package_4.1/SLEP']));
