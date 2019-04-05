@@ -5,7 +5,7 @@ function results = tracker(params)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Get sequence info
-[seq, im] = get_sequence_info(params.seq);
+[seq, im,im2] = get_sequence_info(params.seq);
 params = rmfield(params, 'seq');
 if isempty(im)
     seq.rect_position = [];
@@ -67,7 +67,7 @@ end
 if size(im,3) > 1 && is_color_image == false
     im = im(:,:,1);
 end
-
+im2 = im2(:,:,1);
 % Check if mexResize is available and show warning otherwise.
 params.use_mexResize = true;
 global_fparams.use_mexResize = true;
@@ -189,13 +189,14 @@ scores_fs_feat = cell(1,1,num_feature_blocks);
 while true
     % Read image
     if seq.frame > 0
-        [seq, im] = get_sequence_frame(seq);
+        [seq, im,im2] = get_sequence_frame(seq);
         if isempty(im)
             break;
         end
         if size(im,3) > 1 && is_color_image == false
             im = im(:,:,1);
         end
+		im2 = im2(:,:,1);
     else
         seq.frame = 1;
     end
@@ -217,8 +218,9 @@ while true
             % Extract features at multiple resolutions
             sample_pos = round(pos);
             sample_scale = currentScaleFactor*scaleFactors;
-            xt = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
-                                    
+            xt1 = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
+             xt2 = extract_infrared_features(im2, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
+             xt{1} = cat(3,xt1{1},xt2{1});
             % Do windowing of features
             xtw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xt, cos_window, 'uniformoutput', false);
             
@@ -276,8 +278,9 @@ while true
     
     % extract image region for training sample
     sample_pos = round(pos);
-    xl = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-
+    xl1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+    xl2 =  extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+    xl{1} = cat(3,xl1{1},xl2{1});
     % do windowing of features
     xlw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xl, cos_window, 'uniformoutput', false);
 

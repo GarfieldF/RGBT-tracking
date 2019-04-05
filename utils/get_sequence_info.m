@@ -1,4 +1,4 @@
-function [seq, init_image] = get_sequence_info(seq)
+function [seq, init_image,init_image2] = get_sequence_info(seq)
 
 if ~isfield(seq, 'format') || isempty(seq.format)
     if isempty(seq)
@@ -12,12 +12,14 @@ seq.frame = 0;
 
 if strcmpi(seq.format, 'otb')
     seq.image_files = seq.s_frames;
+    seq.image_files2 = seq.s_frames2;	
     seq = rmfield(seq, 's_frames');
     seq.init_sz = [seq.init_rect(1,4), seq.init_rect(1,3)];
     seq.init_pos = [seq.init_rect(1,2), seq.init_rect(1,1)] + (seq.init_sz - 1)/2;
     seq.num_frames = numel(seq.image_files);
     seq.rect_position = zeros(seq.num_frames, 4);
     init_image = imread(seq.image_files{1});
+    init_image2 = imread(seq.image_files2{1});
 elseif strcmpi(seq.format, 'vot')
     [seq.handle, init_image_file, init_region] = vot('polygon');
     
