@@ -64,5 +64,7 @@ params.gpu_id = [];                     % Set the GPU id, or leave empty to use 
 % Initialize
 params.seq = seq;
 
+%debug
+params.RGBT = 0;
 % Run tracker
 results = tracker(params);

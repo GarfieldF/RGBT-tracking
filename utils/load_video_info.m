@@ -8,28 +8,24 @@ seq.init_rect = ground_truth(1,:);
 
 img_path = [video_path '/visible/'];
 
-if exist([img_path num2str(1, '%04i.png')], 'file'),
-    img_files = num2str((1:seq.len)', [img_path '%04i.png']);
-elseif exist([img_path num2str(30, '%05i') 'v.jpg'], 'file'),
-    img_files = num2str((30:seq.len+29)', [img_path '%05i' 'v.jpg']);
-elseif exist([img_path num2str(1, '%04i.bmp')], 'file'),
-    img_files = num2str((1:seq.len)', [img_path '%04i.bmp']);
-else
-    error('No image files to load.')
+img_files = dir([img_path '*.jpg']);
+assert(~isempty(img_files), 'No image files to load.')
+img_files = sort({img_files.name});
+for i= 1:numel(img_files)
+    img_files{i}=[img_path img_files{i}];
 end
+seq.s_frames = img_files';	
 
-seq.s_frames = cellstr(img_files);
 
 
 infra_path = [video_path '/infrared/'];
 
-if exist([infra_path num2str(30, '%05i') 'i.jpg'], 'file'),
-    infra_files = num2str((30:seq.len+29)', [infra_path '%05i' 'i.jpg']);
-else
-    error('No image files to load.')
+infra_files = dir([infra_path '*.jpg']);
+assert(~isempty(infra_files), 'No image files to load.')
+infra_files = sort({infra_files.name});
+for i= 1:numel(infra_files)
+    infra_files{i}=[infra_path infra_files{i}];
 end
+seq.s_frames2 = infra_files';	
 
-seq.s_frames2 = cellstr(infra_files);
-
-end
 

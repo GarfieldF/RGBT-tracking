@@ -218,9 +218,13 @@ while true
             % Extract features at multiple resolutions
             sample_pos = round(pos);
             sample_scale = currentScaleFactor*scaleFactors;
+            if params.RGBT == 1
             xt1 = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
              xt2 = extract_infrared_features(im2, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
              xt{1} = cat(3,xt1{1},xt2{1});
+            else
+                 xt = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
+            end
             % Do windowing of features
             xtw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xt, cos_window, 'uniformoutput', false);
             
@@ -278,9 +282,13 @@ while true
     
     % extract image region for training sample
     sample_pos = round(pos);
-    xl1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-    xl2 =  extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-    xl{1} = cat(3,xl1{1},xl2{1});
+      if params.RGBT == 1
+         xl1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+         xl2 =  extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+         xl{1} = cat(3,xl1{1},xl2{1});
+      else
+          xl = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+      end
     % do windowing of features
     xlw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xl, cos_window, 'uniformoutput', false);
 

@@ -8,7 +8,7 @@ setup_paths();
 %  Load video information
 base_path  =  './sequences';
 %video  = choose_video(base_path);
-video = 'car';
+video = 'elecbike';
 
 video_path = [base_path '/' video];
 [seq, gt_boxes] = load_video_info(video_path);
@@ -18,12 +18,22 @@ results = run_STRCF(seq);
 %results = run_DeepSTRCF(seq);
 
 pd_boxes = results.res;
+
+%precision plot
+show_plots=1;
+precisions = precision_plot(pd_boxes, gt_boxes, video, show_plots);
+fprintf('%12s - Precision (20px):% 1.3f, \n', video, precisions(20))
+
+%success plot  can be moved to another new file
 thresholdSetOverlap = 0: 0.05 : 1;
 success_num_overlap = zeros(1, numel(thresholdSetOverlap));
 res = calcRectInt(gt_boxes, pd_boxes);
 for t = 1: length(thresholdSetOverlap)
-    success_num_overlap(1, t) = sum(res > thresholdSetOverlap(t));
+    success_num_overlap(1, t) = sum(res > thresholdSetOverlap(t))/ size(gt_boxes, 1);
 end
-cur_AUC = mean(success_num_overlap) / size(gt_boxes, 1);
+figure('UserData','off', 'Name',['Success plot- ' video])
+		plot(thresholdSetOverlap,success_num_overlap, 'k-', 'LineWidth',2)
+		xlabel('Overlap Threshold'), ylabel('success rate')
+cur_AUC = mean(success_num_overlap) ;
 FPS_vid = results.fps;
-display([video  '---->' '   FPS:   ' num2str(FPS_vid)   '    op:   '   num2str(cur_AUC)]);
+display([video  '---->' '   FPS:   ' num2str(FPS_vid)   '    AUC:   '   num2str(cur_AUC)]);
