@@ -6,11 +6,11 @@
 setup_paths();
 
 %  Load video information
-base_path  =  './sequences';
+base_path  =  './sequences/';
 %video  = choose_video(base_path);
 video = 'elecbike';
 
-video_path = [base_path '/' video];
+video_path = [base_path  video];
 [seq, gt_boxes] = load_video_info(video_path);
 
 % Run STRCF
