@@ -1,0 +1,11 @@
+*.m~
+*.mat
+*.JPEG
+/external_libs/
+/sequences/
+/RGB-T234/
+/results/
+
+*.txt
+
+
