@@ -7,7 +7,7 @@ clear all
 setup_paths();
 
 %  Load video information
-base_path  =  './sequences/';
+base_path  =  './RGB-T234/';
 %video  = choose_video(base_path);
 dirs = dir(base_path);
 videos = {dirs.name};
@@ -48,7 +48,8 @@ if ~exist('matlabpool', 'file'),
 		all_fps(k) = results.fps;
 
 		display([videos{k}  '---->' '   FPS:   ' num2str(all_fps(k))   '    AUC:   '   num2str(all_AUC(k)) '   Precision (20px): ' num2str(all_precisions(k))]);
-
+        %%%%%SAVE THE RESULT%%%%%
+        save(['./results/' lower(videos{k}) '__RGBT'  '.mat'], 'results');
 					
 				
 				

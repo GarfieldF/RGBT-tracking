@@ -66,5 +66,6 @@ params.seq = seq;
 
 %debug
 params.RGBT = 0;
+params.alpha_flag=0;
 % Run tracker
 results = tracker(params);
