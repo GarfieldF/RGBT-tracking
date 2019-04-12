@@ -6,7 +6,7 @@
 setup_paths();
 
 %  Load video information
-base_path  =  './sequences/';
+base_path  =  './RGB-T234/';
 %video  = choose_video(base_path);
 video = 'elecbike';
 
@@ -22,7 +22,7 @@ pd_boxes = results.res;
 %precision plot
 show_plots=1;
 precisions = precision_plot(pd_boxes, gt_boxes, video, show_plots);
-fprintf('%12s - Precision (20px):% 1.3f, \n', video, precisions(20))
+% fprintf('%12s - Precision (20px):% 1.3f, \n', video, precisions(20))
 
 %success plot  can be moved to another new file
 thresholdSetOverlap = 0: 0.05 : 1;
@@ -36,4 +36,4 @@ figure('UserData','off', 'Name',['Success plot- ' video])
 		xlabel('Overlap Threshold'), ylabel('success rate')
 cur_AUC = mean(success_num_overlap) ;
 FPS_vid = results.fps;
-display([video  '---->' '   FPS:   ' num2str(FPS_vid)   '    AUC:   '   num2str(cur_AUC)]);
+display([videos{k}  '---->' '   FPS:   ' num2str(all_fps(k))   '    AUC:   '   num2str(all_AUC(k)) '   Precision (20px): ' num2str(all_precisions(k))]);
