@@ -46,4 +46,6 @@ https://sites.google.com/view/ahutracking001/Start  , and move it to repository 
 6. Run the script to get the result of the whole dataset.   
    |>> run_all_STRCF  
     Each detailed result.mat is saved at './results' and the average value of each sequence is saved at matlab work directory.  
+
+PS:There are two params need to take more attention in run_STRCF.m, i.e., params.RGBT (=1 means use the RGBT-73channel features and =0->RGB-42channel),params.alpha_flag (=1 -> use the weighted modality)
    
