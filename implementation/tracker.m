@@ -184,6 +184,14 @@ seq.time = 0;
 f_pre_f = cell(num_feature_blocks, 1);
 cf_f = cell(num_feature_blocks, 1);
 
+%The weight of each modality a^m
+if params.RGBT == 1
+alpha_r_m=ones(73,1);
+r_m=zeros(73,1);
+else
+alpha_r_m=ones(42,1);
+r_m=zeros(42,1);
+end
 % Allocate
 scores_fs_feat = cell(1,1,num_feature_blocks);
 while true
@@ -233,6 +241,12 @@ while true
                         
             % Compute convolution for each feature block in the Fourier domain
             % and the sum over all blocks.
+            if params.alpha_flag==1
+                for m=1:size(f_f,3)
+                xtf{k1}(:,:,m,:)=alpha_r_m(m)*xtf{k1}(:,:,m,:);
+                end
+            end
+            
             scores_fs_feat{k1} = gather(sum(bsxfun(@times, conj(cf_f{k1}), xtf{k1}), 3));
             scores_fs_sum = scores_fs_feat{k1};
             for k = block_inds
@@ -359,7 +373,22 @@ while true
         % save the trained filters
         f_pre_f{k} = f_f;
         cf_f{k} = f_f;
-    end  
+		% update the weight of each modality
+        if params.alpha_flag==1
+            for m=1:1:size(f_f,3)
+            xf_wf_m=bsxfun(@times, conj(f_f(:,:,m)), xlf{1}(:,:,m));
+            %xf_wf = resizeDFT2(xf_wf, output_sz);
+            x_w_m=ifft2(xf_wf_m,'symmetric');
+            r_m(m)=1/norm(y-x_w_m);
+            end
+
+            sum_r_m=sum(r_m);
+
+            for m=1:1:size(f_f,3)
+            alpha_r_m(m)=size(f_f,3)*r_m(m)/sum_r_m;
+            end
+        end
+	end  
             
     % Update the target size (only used for computing output box)
     target_sz = base_target_sz * currentScaleFactor;
@@ -396,5 +425,5 @@ end
 
 [~, results] = get_sequence_results(seq);
 
-disp(['fps: ' num2str(results.fps)])
+% disp(['fps: ' num2str(results.fps)])
 
