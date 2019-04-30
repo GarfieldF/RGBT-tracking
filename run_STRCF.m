@@ -67,8 +67,7 @@ params.seq = seq;
 %debug
 params.RGBT = 1;
 params.alpha_flag=0;
-params.motion_thresh=0.08;
-params.appearance_thresh=0.1;
+
 
 %%%%
 config.padding = 1.8;  %extra area surrounding the target

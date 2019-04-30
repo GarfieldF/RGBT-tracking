@@ -6,9 +6,9 @@
 setup_paths();
 
 %  Load video information
-base_path  =  './RGB-T234/';
+base_path  =  './data/';
 %video  = choose_video(base_path);
-video = 'man5';
+video = 'OccCar-2';
 
 video_path = [base_path  video];
 [seq, gt_boxes] = load_video_info(video_path);
