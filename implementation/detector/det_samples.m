@@ -1,27 +1,27 @@
 
 % det using the  bb as [x y w d]
 
-function [feat, pos_samples, labels, weights]=det_samples(im, pos, window_sz, det_config)
-% 
-% w_area1=get_subwindow(im, pos, floor(window_sz*1.2));
-% 
-% feat1=get_feature_detector(w_area1, det_config.nbin);
-% 
-% feat1=imresize(feat1, det_config.ratio, 'nearest');
-% 
-% w_area2=get_subwindow(im2, pos, floor(window_sz*1.2));
-% 
-% feat2=get_feature_detector(w_area2, det_config.nbin);
-% 
-% feat2=imresize(feat2, det_config.ratio, 'nearest');
-% 
-% feat=cat(3,feat1,feat2);
+function [feat, pos_samples, labels, weights]=det_samples(im,im2, pos, window_sz, det_config)
 
-w_area=get_subwindow(im, pos, floor(window_sz*1.2));
+w_area1=get_subwindow(im, pos, floor(window_sz*1.2));
 
-feat=get_feature_detector(w_area, det_config.nbin);
+feat1=get_feature_detector(w_area1, det_config.nbin);
 
-feat=imresize(feat, det_config.ratio, 'nearest');
+feat1=imresize(feat1, det_config.ratio, 'nearest');
+
+w_area2=get_subwindow(im2, pos, floor(window_sz*1.2));
+
+feat2=get_feature_detector(w_area2, det_config.nbin);
+
+feat2=imresize(feat2, det_config.ratio, 'nearest');
+
+feat=cat(3,feat1,feat2);
+
+% w_area=get_subwindow(im, pos, floor(window_sz*1.2));
+% 
+% feat=get_feature_detector(w_area, det_config.nbin);
+% 
+% feat=imresize(feat, det_config.ratio, 'nearest');
 
 
 % w_area=imresize(w_area, det_config.ratio, 'nearest');

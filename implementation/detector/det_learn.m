@@ -1,8 +1,8 @@
 
 
-function [ svm_struct ] = det_learn( im, pos, window_sz, det_config, svm_struct )
+function [ svm_struct ] = det_learn( im, im2,pos, window_sz, det_config, svm_struct )
 %
-[feat, ~, labels]=det_samples(im, pos, window_sz, det_config);
+[feat, ~, labels]=det_samples(im,im2, pos, window_sz, det_config);
 
 idx_p=labels>0.9;
 idx_n=labels<0.5;

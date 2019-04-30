@@ -251,37 +251,6 @@ while true
             sample_pos = round(pos);
             sample_scale = currentScaleFactor*scaleFactors;
             %%%%%%%% translation estimation %%%%%%%%%%%
-            if params.RGBT == 1
-                xt1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-                xt2 = extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-                xt{1} = cat(3,xt1{1},xt2{1});
-            else
-                xt = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-            end
-            % Do windowing of features
-            xtw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xt, cos_window, 'uniformoutput', false);            
-            % Compute the fourier series
-            xtf = cellfun(@fft2, xtw, 'uniformoutput', false);
-            
-            scores_fs0 = gather(sum(bsxfun(@times, conj(cf_f{1}), xlf{1}), 3));
-            responsef_padded = resizeDFT2(scores_fs0, output_sz);
-            response = ifft2(responsef_padded, 'symmetric');                       
-%             max_response=max(response(:));
-            
-%             [disp_row, disp_col] = find(response == max_response, 1);
-%             
-%          
-            [disp_row, disp_col ,~] = resp_newton(response, responsef_padded, newton_iterations, ky, kx, output_sz); 
-            translation_vec =[disp_row, disp_col].* (img_support_sz./output_sz) * currentScaleFactor;
-            % update position
-            old_pos = pos;
-            pos = sample_pos + translation_vec;
-            
-            %%%%%%% max_response estimation %%%%%%%%
-             [~, max_response]=do_correlation(im2, pos, app_sz, [], config, app_model);
-            
-            
-            
             %%%%%%% scale estimation %%%%%%%%
             if params.RGBT == 1
                 xt1 = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
@@ -318,21 +287,15 @@ while true
             
             responsef_padded = resizeDFT2(scores_fs, output_sz);
             response = ifft2(responsef_padded, 'symmetric');
-            [~, ~, sind] = resp_newton(response, responsef_padded, newton_iterations, ky, kx, output_sz);
-            
-            % Compute the translation vector in pixel-coordinates and round
-            % to the closest integer pixel.
-%             translation_vec = [disp_row, disp_col] .* (img_support_sz./output_sz) * currentScaleFactor * scaleFactors(sind);
-            scale_change_factor = scaleFactors(sind);
-            
-%             % update position
-%             old_pos = pos;
-% %             pos = sample_pos + translation_vec;
-%             
-%             if params.clamp_position
-%                 pos = max([1 1], min([size(im,1) size(im,2)], pos));
-%             end
-            
+           [disp_row, disp_col, sind] = resp_newton(response, responsef_padded, newton_iterations, ky, kx, output_sz);
+           
+              translation_vec =[disp_row, disp_col].* (img_support_sz./output_sz) * currentScaleFactor* scaleFactors(sind);
+               scale_change_factor = scaleFactors(sind);
+            % update position
+            old_pos = pos;
+            pos = sample_pos + translation_vec;
+           
+                        
             % Update the scale
             currentScaleFactor = currentScaleFactor * scale_change_factor;
             
@@ -342,6 +305,19 @@ while true
             elseif currentScaleFactor > max_scale_factor
                 currentScaleFactor = max_scale_factor;
             end
+            
+            %%%%%%% max_response estimation %%%%%%%%
+             [~, max_response]=do_correlation(im2, pos, app_sz, [], config, app_model);
+             
+              config.max_response=max_response;
+              
+            %%%%%%%  redector %%%%%%%%   
+            if max_response<config.motion_thresh,                
+               [pos, max_response]=refine_pos_rf(im,im2, pos, svm_struct, app_model, config);           
+            end
+            
+            
+
             
             iter = iter + 1;
         end
@@ -469,14 +445,16 @@ while true
     if seq.frame == 1,  %first frame, train with a single image
         app_model.xf=app_xf;
         app_model.alphaf=app_alphaf;
+        svm_struct=det_learn(im,im2, pos, window_sz, config.detc, []);
     else
         
         if max_response>config.appearance_thresh
             
             app_model.alphaf=(1 - interp_factor) * app_model.alphaf + interp_factor * app_alphaf;
             app_model.xf=(1 - interp_factor) * app_model.xf + interp_factor * app_xf;
+            svm_struct=det_learn(im,im2, pos, window_sz, config.detc, svm_struct);
         end
-        display(num2str(max_response));
+%         display(num2str(max_response));
     end
     
     % Update the target size (only used for computing output box)
