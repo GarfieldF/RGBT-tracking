@@ -1,4 +1,4 @@
-function results = tracker(params)
+function results = tracker(params,config)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Initialization
@@ -13,11 +13,28 @@ if isempty(im)
     return;
 end
 
+%%%my code%%%%
+
+filterpoolsize = 5;
+filternum = 0;
 % Init position
 pos = seq.init_pos(:)';
 target_sz = seq.init_sz(:)';
 params.init_sz = target_sz;
 
+
+%%%LCT%%%%%%
+
+im_sz=size(im);
+[window_sz, app_sz]=search_window(target_sz,im_sz, config);
+config.window_sz=window_sz;
+config.app_sz=app_sz;
+config.detc=det_config(target_sz, im_sz);
+svm_struct=[];
+cell_size=config.features.cell_size;
+interp_factor=config.interp_factor;
+output_sigma0 = sqrt(prod(target_sz)) * config.output_sigma_factor / cell_size;
+app_yf=fft2(gaussian_shaped_labels(output_sigma0, floor(app_sz / cell_size)));
 % Feature settings
 features = params.t_features;
 
@@ -49,7 +66,7 @@ admm_max_iterations = params.max_iterations;
 init_penalty_factor = params.init_penalty_factor;
 max_penalty_factor = params.max_penalty_factor;
 penalty_scale_step = params.penalty_scale_step;
-temporal_regularization_factor = params.temporal_regularization_factor; 
+temporal_regularization_factor = params.temporal_regularization_factor;
 
 init_target_sz = target_sz;
 
@@ -67,6 +84,7 @@ end
 if size(im,3) > 1 && is_color_image == false
     im = im(:,:,1);
 end
+im_gray = rgb2gray(im); 
 im2 = im2(:,:,1);
 % Check if mexResize is available and show warning otherwise.
 params.use_mexResize = true;
@@ -136,7 +154,7 @@ for i = 1:num_feature_blocks
     cg           = circshift(-floor((sz(2)-1)/2):ceil((sz(2)-1)/2), [0 -floor((sz(2)-1)/2)]);
     [rs, cs]     = ndgrid(rg,cg);
     y            = exp(-0.5 * (((rs.^2 + cs.^2) / output_sigma^2)));
-    yf{i}           = fft2(y); 
+    yf{i}           = fft2(y);
 end
 
 % Compute the cosine windows
@@ -146,7 +164,7 @@ cos_window = cellfun(@(sz) hann(sz(1))*hann(sz(2))', feature_sz_cell, 'uniformou
 reg_window = cell(num_feature_blocks, 1);
 for i = 1:num_feature_blocks
     reg_scale = floor(base_target_sz/params.feature_downsample_ratio(i));
-    use_sz = filter_sz_cell{i};    
+    use_sz = filter_sz_cell{i};
     reg_window{i} = ones(use_sz) * params.reg_window_max;
     range = zeros(numel(reg_scale), 2);
     
@@ -181,16 +199,22 @@ end
 seq.time = 0;
 
 % Define the learning variables
+
 f_pre_f = cell(num_feature_blocks, 1);
+
+%my code
+f_pool = cell(num_feature_blocks,filterpoolsize);
+sumfilter = cell(num_feature_blocks, 1);
+
 cf_f = cell(num_feature_blocks, 1);
 
 %The weight of each modality a^m
 if params.RGBT == 1
-alpha_r_m=ones(73,1);
-r_m=zeros(73,1);
+    alpha_r_m=ones(73,1);
+    r_m=zeros(73,1);
 else
-alpha_r_m=ones(42,1);
-r_m=zeros(42,1);
+    alpha_r_m=ones(42,1);
+    r_m=zeros(42,1);
 end
 % Allocate
 scores_fs_feat = cell(1,1,num_feature_blocks);
@@ -204,18 +228,18 @@ while true
         if size(im,3) > 1 && is_color_image == false
             im = im(:,:,1);
         end
-		im2 = im2(:,:,1);
+        im2 = im2(:,:,1);
     else
         seq.frame = 1;
     end
-
+    
     tic();
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Target localization step
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Do not estimate translation and scaling on the first frame, since we 
+    % Do not estimate translation and scaling on the first frame, since we
     % just want to initialize the tracker there
     if seq.frame > 1
         old_pos = inf(size(pos));
@@ -226,24 +250,57 @@ while true
             % Extract features at multiple resolutions
             sample_pos = round(pos);
             sample_scale = currentScaleFactor*scaleFactors;
+            %%%%%%%% translation estimation %%%%%%%%%%%
             if params.RGBT == 1
-            xt1 = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
-             xt2 = extract_infrared_features(im2, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
-             xt{1} = cat(3,xt1{1},xt2{1});
+                xt1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+                xt2 = extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+                xt{1} = cat(3,xt1{1},xt2{1});
             else
-                 xt = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
+                xt = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+            end
+            % Do windowing of features
+            xtw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xt, cos_window, 'uniformoutput', false);            
+            % Compute the fourier series
+            xtf = cellfun(@fft2, xtw, 'uniformoutput', false);
+            
+            scores_fs0 = gather(sum(bsxfun(@times, conj(cf_f{1}), xlf{1}), 3));
+            responsef_padded = resizeDFT2(scores_fs0, output_sz);
+            response = ifft2(responsef_padded, 'symmetric');                       
+%             max_response=max(response(:));
+            
+%             [disp_row, disp_col] = find(response == max_response, 1);
+%             
+%          
+            [disp_row, disp_col ,~] = resp_newton(response, responsef_padded, newton_iterations, ky, kx, output_sz); 
+            translation_vec =[disp_row, disp_col].* (img_support_sz./output_sz) * currentScaleFactor;
+            % update position
+            old_pos = pos;
+            pos = sample_pos + translation_vec;
+            
+            %%%%%%% max_response estimation %%%%%%%%
+             [~, max_response]=do_correlation(im2, pos, app_sz, [], config, app_model);
+            
+            
+            
+            %%%%%%% scale estimation %%%%%%%%
+            if params.RGBT == 1
+                xt1 = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
+                xt2 = extract_infrared_features(im2, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
+                xt{1} = cat(3,xt1{1},xt2{1});
+            else
+                xt = extract_features(im, sample_pos, sample_scale, features, global_fparams, feature_extract_info);
             end
             % Do windowing of features
             xtw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xt, cos_window, 'uniformoutput', false);
             
             % Compute the fourier series
             xtf = cellfun(@fft2, xtw, 'uniformoutput', false);
-                        
+            
             % Compute convolution for each feature block in the Fourier domain
             % and the sum over all blocks.
             if params.alpha_flag==1
                 for m=1:size(f_f,3)
-                xtf{k1}(:,:,m,:)=alpha_r_m(m)*xtf{k1}(:,:,m,:);
+                    xtf{k1}(:,:,m,:)=alpha_r_m(m)*xtf{k1}(:,:,m,:);
                 end
             end
             
@@ -254,28 +311,28 @@ while true
                 scores_fs_feat{k} = resizeDFT2(scores_fs_feat{k}, output_sz);
                 scores_fs_sum = scores_fs_sum +  scores_fs_feat{k};
             end
-             
+            
             % Also sum over all feature blocks.
             % Gives the fourier coefficients of the convolution response.
             scores_fs = permute(gather(scores_fs_sum), [1 2 4 3]);
             
             responsef_padded = resizeDFT2(scores_fs, output_sz);
             response = ifft2(responsef_padded, 'symmetric');
-            [disp_row, disp_col, sind] = resp_newton(response, responsef_padded, newton_iterations, ky, kx, output_sz);
-                        
+            [~, ~, sind] = resp_newton(response, responsef_padded, newton_iterations, ky, kx, output_sz);
+            
             % Compute the translation vector in pixel-coordinates and round
             % to the closest integer pixel.
-            translation_vec = [disp_row, disp_col] .* (img_support_sz./output_sz) * currentScaleFactor * scaleFactors(sind);            
+%             translation_vec = [disp_row, disp_col] .* (img_support_sz./output_sz) * currentScaleFactor * scaleFactors(sind);
             scale_change_factor = scaleFactors(sind);
             
-            % update position
-            old_pos = pos;
-            pos = sample_pos + translation_vec;
+%             % update position
+%             old_pos = pos;
+% %             pos = sample_pos + translation_vec;
+%             
+%             if params.clamp_position
+%                 pos = max([1 1], min([size(im,1) size(im,2)], pos));
+%             end
             
-            if params.clamp_position
-                pos = max([1 1], min([size(im,1) size(im,2)], pos));
-            end
-                        
             % Update the scale
             currentScaleFactor = currentScaleFactor * scale_change_factor;
             
@@ -293,28 +350,33 @@ while true
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Model update step
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    patch=get_subwindow(im_gray,pos,app_sz);
+    app_xf=fft2(get_features(patch, config, []));
+    app_kf = gaussian_correlation(app_xf, app_xf, config.kernel_sigma);
+    app_alphaf = app_yf ./ (app_kf + config.lambda);   %equation for fast training
     
     % extract image region for training sample
     sample_pos = round(pos);
-      if params.RGBT == 1
-         xl1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-         xl2 =  extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-         xl{1} = cat(3,xl1{1},xl2{1});
-      else
-          xl = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
-      end
+    if params.RGBT == 1
+        xl1 = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+        xl2 =  extract_infrared_features(im2, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+        xl{1} = cat(3,xl1{1},xl2{1});
+    else
+        xl = extract_features(im, sample_pos, currentScaleFactor, features, global_fparams, feature_extract_info);
+    end
     % do windowing of features
     xlw = cellfun(@(feat_map, cos_window) bsxfun(@times, feat_map, cos_window), xl, cos_window, 'uniformoutput', false);
-
+    
     % compute the fourier series
     xlf = cellfun(@fft2, xlw, 'uniformoutput', false);
-
+    
     % train the CF model for each feature
     for k = 1: numel(xlf)
         model_xf = xlf{k};
-
+        
         if (seq.frame == 1)
             f_pre_f{k} = zeros(size(model_xf));
+            sumfilter{k} = zeros(size(model_xf));
             mu = 0;
         else
             mu = temporal_regularization_factor(k);
@@ -338,58 +400,85 @@ while true
             reg_window{k} = gpuArray(reg_window{k});
             yf{k} = gpuArray(yf{k});
         end
-
+        
         % pre-compute the variables
         T = prod(output_sz);
         S_xx = sum(conj(model_xf) .* model_xf, 3);
         Sf_pre_f = sum(conj(model_xf) .* f_pre_f{k}, 3);
         Sfx_pre_f = bsxfun(@times, model_xf, Sf_pre_f);
-
+        
         % solve via ADMM algorithm
         iter = 1;
         while (iter <= admm_max_iterations)
-
+            
             % subproblem f
             B = S_xx + T * (gamma + mu);
             Sgx_f = sum(conj(model_xf) .* g_f, 3);
             Shx_f = sum(conj(model_xf) .* h_f, 3);
- 
+            
             f_f = ((1/(T*(gamma + mu)) * bsxfun(@times,  yf{k}, model_xf)) - ((1/(gamma + mu)) * h_f) +(gamma/(gamma + mu)) * g_f) + (mu/(gamma + mu)) * f_pre_f{k} - ...
                 bsxfun(@rdivide,(1/(T*(gamma + mu)) * bsxfun(@times, model_xf, (S_xx .*  yf{k})) + (mu/(gamma + mu)) * Sfx_pre_f - ...
                 (1/(gamma + mu))* (bsxfun(@times, model_xf, Shx_f)) +(gamma/(gamma + mu))* (bsxfun(@times, model_xf, Sgx_f))), B);
-
+            
             %   subproblem g
             g_f = fft2(argmin_g(reg_window{k}, gamma, real(ifft2(gamma * f_f+ h_f)), g_f));
-
+            
             %   update h
             h_f = h_f + (gamma * (f_f - g_f));
-
+            
             %   update gamma
             gamma = min(gamma_scale_step * gamma, gamma_max);
+            
+            %   update pre_f (my code)
+            if filternum ~= 0
+                f_pre_f = filterselection(f_f,f_pool(k,:),filternum);
+                Sf_pre_f = sum(conj(model_xf) .* f_pre_f{k}, 3);
+                Sfx_pre_f = bsxfun(@times, model_xf, Sf_pre_f);
+            end
             
             iter = iter+1;
         end
         
         % save the trained filters
-        f_pre_f{k} = f_f;
+        %             f_pre_f{k} = f_f;
+        
+        if seq.frame<=filterpoolsize
+            filternum = filternum+1;
+        end
         cf_f{k} = f_f;
-		% update the weight of each modality
+        
+        [f_pool(k,:),f_pre_f{k},sumfilter{k}] = filterpoolupdate(f_pool(k,:),f_f,seq.frame,filterpoolsize,sumfilter{k});
+        
+        % update the weight of each modality
         if params.alpha_flag==1
             for m=1:1:size(f_f,3)
-            xf_wf_m=bsxfun(@times, conj(f_f(:,:,m)), xlf{1}(:,:,m));
-            %xf_wf = resizeDFT2(xf_wf, output_sz);
-            x_w_m=ifft2(xf_wf_m,'symmetric');
-            r_m(m)=1/norm(y-x_w_m);
+                xf_wf_m=bsxfun(@times, conj(f_f(:,:,m)), xlf{1}(:,:,m));
+                %xf_wf = resizeDFT2(xf_wf, output_sz);
+                x_w_m=ifft2(xf_wf_m,'symmetric');
+                r_m(m)=1/norm(y-x_w_m);
             end
-
+            
             sum_r_m=sum(r_m);
-
+            
             for m=1:1:size(f_f,3)
-            alpha_r_m(m)=size(f_f,3)*r_m(m)/sum_r_m;
+                alpha_r_m(m)=size(f_f,3)*r_m(m)/sum_r_m;
             end
         end
-	end  
+    end
+    
+    if seq.frame == 1,  %first frame, train with a single image
+        app_model.xf=app_xf;
+        app_model.alphaf=app_alphaf;
+    else
+        
+        if max_response>config.appearance_thresh
             
+            app_model.alphaf=(1 - interp_factor) * app_model.alphaf + interp_factor * app_alphaf;
+            app_model.xf=(1 - interp_factor) * app_model.xf + interp_factor * app_xf;
+        end
+        display(num2str(max_response));
+    end
+    
     % Update the target size (only used for computing output box)
     target_sz = base_target_sz * currentScaleFactor;
     
@@ -418,7 +507,7 @@ while true
         text(10, 10, [int2str(seq.frame) '/'  int2str(size(seq.image_files, 1))], 'color', [0 1 1]);
         hold off;
         axis off;axis image;set(gca, 'Units', 'normalized', 'Position', [0 0 1 1])
-                    
+        
         drawnow
     end
 end

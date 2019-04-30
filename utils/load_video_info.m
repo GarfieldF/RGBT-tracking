@@ -27,5 +27,6 @@ for i= 1:numel(infra_files)
     infra_files{i}=[infra_path infra_files{i}];
 end
 seq.s_frames2 = infra_files';	
+end
 
 

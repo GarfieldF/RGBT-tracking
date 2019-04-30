@@ -8,7 +8,7 @@ setup_paths();
 %  Load video information
 base_path  =  './RGB-T234/';
 %video  = choose_video(base_path);
-video = 'elecbike';
+video = 'man5';
 
 video_path = [base_path  video];
 [seq, gt_boxes] = load_video_info(video_path);
@@ -36,4 +36,4 @@ figure('UserData','off', 'Name',['Success plot- ' video])
 		xlabel('Overlap Threshold'), ylabel('success rate')
 cur_AUC = mean(success_num_overlap) ;
 FPS_vid = results.fps;
-display([videos{k}  '---->' '   FPS:   ' num2str(all_fps(k))   '    AUC:   '   num2str(all_AUC(k)) '   Precision (20px): ' num2str(all_precisions(k))]);
+display([video  '---->' '   FPS:   ' num2str(FPS_vid)   '    AUC:   '   num2str(cur_AUC) '   Precision (20px): ' num2str(precisions(20))]);

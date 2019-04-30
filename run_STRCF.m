@@ -55,7 +55,7 @@ params.number_of_scales = 5;            % Number of scales to run the detector
 params.scale_step = 1.01;               % The scale factor
 
 % Visualization
-params.visualization = 0;               % Visualiza tracking and detection scores
+params.visualization = 1;               % Visualiza tracking and detection scores
 
 % GPU
 params.use_gpu = false;                 % Enable GPU or not
@@ -65,7 +65,25 @@ params.gpu_id = [];                     % Set the GPU id, or leave empty to use 
 params.seq = seq;
 
 %debug
-params.RGBT = 0;
+params.RGBT = 1;
 params.alpha_flag=0;
+params.motion_thresh=0.08;
+params.appearance_thresh=0.1;
+
+%%%%
+config.padding = 1.8;  %extra area surrounding the target
+
+config.lambda = 1e-4;  %regularization
+config.output_sigma_factor = 0.1;  %spatial bandwidth (proportional to target)
+config.interp_factor=0.01; % best 0.01
+config.kernel_sigma = 1;
+
+config.features.hog_orientations = 9;
+config.features.cell_size = 4;   % size of hog grid cell
+config.features.window_size = 6; % size of local region for intensity historgram
+config.features.nbins=8; % bins of intensity historgram
+
+config.motion_thresh=0.15;
+config.appearance_thresh=0.30;
 % Run tracker
-results = tracker(params);
+results = tracker(params,config);

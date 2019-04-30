@@ -7,7 +7,7 @@ pathstr= fileparts(mfilename('fullpath'));
 addpath(genpath([pathstr '/implementation/']));
 
 % Utilities
-addpath([pathstr '/utils/']);
+addpath(genpath([pathstr '/utils/']));
 
 % The feature extraction
 addpath(genpath([pathstr '/feature_extraction/']));
@@ -25,6 +25,8 @@ addpath([pathstr '/external_libs/mtimesx/']);
 
 % mexResize
 addpath([pathstr '/external_libs/mexResize/']);
+% vlfeat-0.9.21
+addpath(genpath([pathstr '/external_libs/vlfeat-0.9.21/toolbox/']));
 % 
 % %SLEP
 % addpath(genpath([ cd '/external_libs/SLEP_package_4.1/SLEP']));
